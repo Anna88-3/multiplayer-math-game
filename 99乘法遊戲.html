@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>九九乘法多人排行榜</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding-top: 30px; }
+        .game-container { background: white; width: 400px; margin: 0 auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #question { font-size: 48px; margin: 20px 0; }
+        #answer-input { font-size: 24px; width: 80%; padding: 10px; text-align: center; }
+        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; font-size: 18px; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        #leaderboard { margin-top: 30px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #eee; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h2>九九乘法挑戰</h2>
+    <div class="stats">
+        <div>分數: <span id="score">0</span></div>
+        <div>剩餘時間: <span id="timer">30</span>s</div>
+    </div>
+    
+    <div id="game-box">
+        <div id="question">準備好了嗎？</div>
+        <input type="number" id="answer-input" placeholder="輸入答案" disabled>
+        <br>
+        <button id="start-btn">開始遊戲</button>
+    </div>
+
+    <div id="leaderboard">
+        <h3>🏆 前 5 名高手榜</h3>
+        <table>
+            <thead>
+                <tr><th>名次</th><th>玩家</th><th>分數</th></tr>
+            </thead>
+            <tbody id="rank-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<audio id="correct-sound" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // 使用你截圖中的 Firebase 設定
+    const firebaseConfig = {
+        apiKey: "AIzaSyChW_66hOk5bC1aVoK345-4P6IOe3peRtE",
+        authDomain: "multiplayer-math-game-87c02.firebaseapp.com",
+        databaseURL: "https://multiplayer-math-game-87c02-default-rtdb.firebaseio.com",
+        projectId: "multiplayer-math-game-87c02",
+        storageBucket: "multiplayer-math-game-87c02.firebasestorage.app",
+        messagingSenderId: "16967644876",
+        appId: "1:16967644876:web:4d21d083ff010967a8b469",
+        measurementId: "G-297G580SDQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const scoreRef = ref(db, 'scores');
+
+    let score = 0;
+    let timeLeft = 30;
+    let currentAns = 0;
+    let timerInterval;
+
+    const questionEl = document.getElementById('question');
+    const inputEl = document.getElementById('answer-input');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const startBtn = document.getElementById('start-btn');
+    const rankBody = document.getElementById('rank-body');
+    const correctSound = document.getElementById('correct-sound');
+
+    startBtn.onclick = () => {
+        score = 0;
+        timeLeft = 30;
+        scoreEl.textContent = score;
+        timerEl.textContent = timeLeft;
+        inputEl.disabled = false;
+        inputEl.value = '';
+        inputEl.focus();
+        startBtn.style.display = 'none';
+        nextQuestion();
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerEl.textContent = timeLeft;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    };
+
+    function nextQuestion() {
+        const a = Math.floor(Math.random() * 9) + 1;
+        const b = Math.floor(Math.random() * 9) + 1;
+        currentAns = a * b;
+        questionEl.textContent = `${a} × ${b} = ?`;
+    }
+
+    inputEl.addEventListener('input', () => {
+        if (parseInt(inputEl.value) === currentAns) {
+            // 播放答對音效
+            correctSound.currentTime = 0; // 每次重頭播放，避免連續答對沒聲音
+            correctSound.play();
+
+            score += 10;
+            scoreEl.textContent = score;
+            inputEl.value = '';
+            nextQuestion();
+        }
+    });
+
+    function endGame() {
+        clearInterval(timerInterval);
+        inputEl.disabled = true;
+        const playerName = prompt("遊戲結束！請留下大名：", "匿名玩家");
+        if (playerName) {
+            push(scoreRef, {
+                name: playerName,
+                score: score,
+                timestamp: Date.now()
+            });
+        }
+        startBtn.style.display = 'inline-block';
+        startBtn.textContent = '再玩一次';
+    }
+
+    const topScoresQuery = query(scoreRef, orderByChild('score'), limitToLast(5));
+    onValue(topScoresQuery, (snapshot) => {
+        const data = snapshot.val();
+        rankBody.innerHTML = '';
+        let scoresArray = [];
+        for (let id in data) { scoresArray.push(data[id]); }
+        scoresArray.sort((a, b) => b.score - a.score);
+        scoresArray.forEach((item, index) => {
+            rankBody.innerHTML += `<tr><td>${index + 1}</td><td>${item.name}</td><td>${item.score}</td></tr>`;
+        });
+    });
+</script>
+
+</body>
+</html>
+
+</body>
+</html>};
